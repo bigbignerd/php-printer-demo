@@ -2,28 +2,26 @@
 
 class Printer
 {
+	const WIDTH = 380;//打印纸宽度
+	const HEIGHT = 250;//打印纸高度
+	const FONT_SIZE = 90;//字体大小（字体高度）
+	const RATIO = 0.5;//字体宽高比22.5
+	const OFFSET = 0;//左侧偏移量
+	const PRINTER_NAME = 'Godex EZ-1105';//打印机名称
+	const OTHER_FONT_SIZE_RATIO = 0.325;//除姓名外的公司与职位的字体高度比例
+
 	public $name = '';
 	public $number = 1;//签到口编号
-	public $company = '';
 	public $position = '';
 	
-	protected const WIDTH = 260;//打印纸宽度
-	protected const HEIGHT = 170;//打印纸高度
-	protected const FONT_SIZE = 45;//字体大小（字体高度）
-	protected const RATIO = 0.5;//字体宽高比
-	protected const OFFSET = 0;//左侧偏移量
-	protected const PRINTER_NAME = 'Godex EZ-1105';//打印机名称
-	protected const OTHER_FONT_SIZE_RATIO = 0.65;//除姓名外的公司与职位的字体高度比例
-
-	public function __contruct($printUserInfo)
+	public function __construct($printUserInfo)
 	{
 		$key = ['no','name','company'];
 		foreach ($printUserInfo as $k => $v) {
-			$$key[$k] = iconv("UTF-8","GBK",$v);
 			$this->$key[$k] = iconv("UTF-8","GBK",$v);
 		}
 	}
-	public function print()
+	public function start()
 	{
 		$handle = printer_open(self::PRINTER_NAME);
 		printer_abort($handle);
@@ -33,10 +31,10 @@ class Printer
 		printer_set_option($handle, PRINTER_MODE, "RAW");
 	
 		//公司第一行位置
-		$companyCoordinate = $this->getCompanyCoordinate();
-		$companyTextArray = $this->addBlankToTextPrev($this->splitAndCalculateString($this->company));
+		// $companyCoordinate = $this->getCompanyCoordinate();
+		// $companyTextArray = $this->addBlankToTextPrev($this->splitAndCalculateString($this->company));
 
-		$this->printNO($handle);//打印签到口编码
+		//$this->printNO($handle);//打印签到口编码
 		$this->printName($handle);
 		$this->printCompany($handle);
 
@@ -58,11 +56,10 @@ class Printer
 		//姓名字体
 		$fontForName = $this->getNameFont();
 		printer_select_font($handle,$fontForName);
-		printer_draw_text($handle,$nameTextArray['fisrtLine'],OFFSET,$nameCoordinate['y']);
-		printer_delete_font($fontForName);
+		printer_draw_text($handle,$nameTextArray['fisrtLine'],self::OFFSET,$nameCoordinate['y']);
 		//draw line
-		printer_draw_line($handle,OFFSET,$nameCoordinate['y'],self::WIDTH -5,$nameCoordinate['y']);
-
+		printer_draw_line($handle,self::OFFSET,$nameCoordinate['y'] + 1.2*self::FONT_SIZE,self::WIDTH + 100,$nameCoordinate['y'] + 1.2*self::FONT_SIZE);
+		printer_delete_font($fontForName);
 		return true;
 	}
 	/**
@@ -79,12 +76,18 @@ class Printer
 		//公司字体
 		$fontForCompany = $this->getCompanyFont();
 		printer_select_font($handle,$fontForCompany);
-		printer_draw_text($handle,$companyTextArray['fisrtLine'],OFFSET,$companyCoordinate['y']);
+		$lineY = $companyCoordinate['y'];
 
 		if(!empty($companyTextArray['secondLine'])){
-			$secondLineY = $companyCoordinate['y'] + 3 * self::FONT_SIZE * self::RATIO * OTHER_FONT_SIZE_RATIO;
-			printer_draw_text($handle,$companyTextArray['secondLine'],OFFSET,$secondLineY);
+			$fisrtLineY = $companyCoordinate['y'] - 15;
+			printer_draw_text($handle,$companyTextArray['fisrtLine'],self::OFFSET,$fisrtLineY);
+			$secondLineY = $fisrtLineY + 3 * self::FONT_SIZE * self::RATIO * self::OTHER_FONT_SIZE_RATIO;
+			printer_draw_text($handle,$companyTextArray['secondLine'],self::OFFSET,$secondLineY);
+			$lineY = $secondLineY;
+		}else{
+			printer_draw_text($handle,$companyTextArray['fisrtLine'],self::OFFSET,$companyCoordinate['y']);
 		}
+		printer_draw_line($handle,self::OFFSET,$lineY + 1.5*self::FONT_SIZE*self::OTHER_FONT_SIZE_RATIO,self::WIDTH + 100,$lineY + 1.5*self::FONT_SIZE*self::OTHER_FONT_SIZE_RATIO);
 		printer_delete_font($fontForCompany);
 		return true;
 	}
@@ -105,7 +108,7 @@ class Printer
 	{
 		$fontWidth = self::FONT_SIZE * self::RATIO;
 		$fontHeight = self::FONT_SIZE;
-		$fontForName =  $this->generateFont($fontWidth,$fontHeight,PRINTER_FW_BOLD);
+		$fontForName =  $this->generateFont($fontHeight,$fontWidth,PRINTER_FW_BOLD);
 		return $fontForName;
 	}
 	/** 
@@ -117,7 +120,7 @@ class Printer
 	{
 		$fontWidth = self::FONT_SIZE * self::RATIO * self::OTHER_FONT_SIZE_RATIO;
 		$fontHeight = self::FONT_SIZE * self::OTHER_FONT_SIZE_RATIO;
-		$fontForCompany = $this->generateFont($fontWidth,$fontHeight,PRINTER_FW_BOLD);
+		$fontForCompany = $this->generateFont($fontHeight,$fontWidth,PRINTER_FW_BOLD);
 		return $fontForCompany;
 	}
 	/**
@@ -129,9 +132,9 @@ class Printer
 	 * @param  $fontWeight 字体粗细
 	 * @return font face
 	 */
-	public function generateFont($fontWidth,$fontHeight,$fontWeight=PRINTER_FW_BOLD)
+	public function generateFont($fontHeight,$fontWidth,$fontWeight=PRINTER_FW_BOLD)
 	{
-		return printer_create_font("simhei",$fontWidth,$fontHeight,$fontWeight,false,false,false,0);
+		return printer_create_font("simhei",$fontHeight,$fontWidth,$fontWeight,false,false,false,0);
 	}
 	/**
 	 * 获取姓名的y值坐标，x坐标为添加空格计算所得
@@ -141,7 +144,7 @@ class Printer
 	 */
 	public function getNameCoordinate()
 	{
-		$y = self::HEIGHT * 0.5 - self::FONT_SIZE+40;
+		$y = self::HEIGHT * 0.5 - self::FONT_SIZE;
 		return ['x'=>'','y'=>$y];
 	}
 	/**
@@ -152,7 +155,7 @@ class Printer
 	 */
 	public function getCompanyCoordinate()
 	{
-		$y = self::HEIGHT * 0.5 + 10;
+		$y = self::HEIGHT * 0.5 + 50;
 		return ['x'=>'','y'=>$y];
 	}
 	/**
@@ -164,12 +167,12 @@ class Printer
 	 */
 	public function addBlankToTextPrev(array $textInfo,$total = 14)
 	{
-		$key = ['fisrtLine','lastLine'];
+		$key = ['fisrtLine','secondLine'];
 		foreach ($textInfo as $k => $v) {
 			if(in_array($k, $key) && !empty($v)){
 				$lineTextInfo = $this->splitAndCalculateString($v);
 				$curTextCount = ($total - $lineTextInfo['chinanum'] - 0.5*$lineTextInfo['notchinanum'])/2;
-				$textInfo['fisrtLine'] = $this->addBlank($v,$curTextCount);
+				$textInfo[$k] = $this->addBlank($v,$curTextCount);
 			}
 		}
 		return $textInfo;
@@ -229,7 +232,7 @@ class Printer
 	    }
 	    if(empty($fisrtLine)) $fisrtLine = $text;
 	    $returnData['fisrtLine'] = $fisrtLine;
-	    $returnData['lastLine'] = $lastLine;
+	    $returnData['secondLine'] = $lastLine;
 	    $returnData['chinanum'] = $chinanum;
 	    $returnData['notchinanum'] = $notchinanum;
 

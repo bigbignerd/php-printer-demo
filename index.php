@@ -12,8 +12,7 @@ if(!isset($_POST) || empty($_POST['name']) || empty($_POST['company'])){
 	$params = implode([$number,$n,$c],";");
 }
 $userInfo = explode(";",$params);
-
 $printer = new Printer($userInfo);
-$printer->print();
-echo json_encode(['errno'=>0,'errmsg'=>'']);
+$printer->start();
+
 ?>
