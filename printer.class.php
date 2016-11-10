@@ -42,6 +42,56 @@ class Printer
 		printer_end_doc($handle);
 		printer_close($handle);
 	}
+	public function startByZPL()
+	{
+		$handle = printer_open(self::PRINTER_NAME);
+		printer_set_option($handle, PRINTER_MODE, "RAW");
+		$this->printBarCode($handle);
+		printer_close($handle);
+	}
+	public function printBarCode($handle)
+	{
+		/**
+		Q30 字元间距
+		W 标签宽度
+		H 设定列印明暗程度
+		P 列印张数
+		S 列印速度
+		AD 列印模式 D：热感模式
+		C1每张标签复印张数设定
+		Rx 左边界起点设定
+		~Q 上边界起印点设定
+		^O 自动剥纸器/自动贴标机设定 0 关闭
+		^Dx - 每几张标签裁切一次之设定
+		^Ex - 停歇点设定
+		~Rx - 反向列印
+		^XSET,ROTATION,n - 整页旋转列印
+		*/
+		$commands = "
+^Q30,3
+^W50
+^H10
+^P1
+^S2
+^AD
+^C1
+^R10
+~Q+10
+^O0
+^D0
+^E12
+~R200
+^XSET,ROTATION,0
+^L
+Dy2-me-dd
+Th:m:s
+AZ3,86,66,4,4,0,0E,{$this->name}
+BA,42,158,2,5,50,0,3,{$this->barcode}
+E
+";
+		$success = printer_write($handle, $command);
+		return true;
+	}
 	/**
 	 * 打印姓名
 	 * @author wonguohui
