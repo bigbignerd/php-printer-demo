@@ -92,6 +92,14 @@ E
 		$success = printer_write($handle, $command);
 		return true;
 	}
+	public function printBarCodeByImg($handle)
+	{
+		$generator = new IMGGenerator($this->barcode);
+		// var_dump($this->barcode);exit;
+		$bmpPath = $generator->getBmpImagePath();
+		printer_draw_bmp($handle, $bmpPath, self::OFFSET - 5, 170);
+		return true;
+	}
 	/**
 	 * 打印姓名
 	 * @author wonguohui
